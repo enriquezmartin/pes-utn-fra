@@ -1,0 +1,16 @@
+# Auto-generated from the repo's Python scripts and notebooks.
+# Includes direct third-party dependencies only; stdlib modules are omitted.
+
+opencv-python
+fixedpoint
+imutils
+ipywidgets
+librosa
+matplotlib
+mediapipe
+numpy
+Pillow
+pyqtgraph
+PyQt5
+scipy
+sounddevice
