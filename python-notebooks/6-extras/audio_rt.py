@@ -29,7 +29,7 @@ freq_curve = freq_plot.plot(pen='c')
 freq_plot.setLabel('left', 'Magnitud')
 freq_plot.setLabel('bottom', 'Frecuencia', units='Hz')
 freq_plot.setXRange(0, fs / 2)
-freq_plot.setYRange(0, 0.5)
+freq_plot.setYRange(0, 0.05)
 
 # Variables globales para la señal
 time = np.linspace(0, duration, N, endpoint=False)

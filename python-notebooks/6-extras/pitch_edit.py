@@ -14,7 +14,7 @@ def change_pitch(audio, sr, semitones):
 def apply_lowpass(audio, sr, cutoff_freq):
     nyquist = sr / 2
     normalized_cutoff = cutoff_freq / nyquist
-    b, a = signal.butter(4, normalized_cutoff, btype='low') # Filtro de Butterworth 
+    b, a = signal.butter(4, normalized_cutoff, btype='lowpass', output='ba') # Filtro de Butterworth
     return signal.filtfilt(b, a, audio)
 
 # Cargar el audio
@@ -47,7 +47,8 @@ sd.wait()
 
 # Graficar espectros
 fig = plt.figure(figsize=(15, 10))
-fig.canvas.manager.set_window_title("Gráficos de las formas de onda")
+if fig.canvas.manager is not None:
+    fig.canvas.manager.set_window_title("Gráficos de las formas de onda")
 # Espectro del audio original
 plt.subplot(3, 1, 1)
 librosa.display.waveshow(audio, sr=sr, alpha=0.5)
