@@ -1,37 +1,33 @@
-import pyaudio
+import sys
+import sounddevice as sd
 import threading
 import atexit
 import numpy as np
 
-from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.pyplot as plt
 
-from PyQt4 import QtGui, QtCore
+from PyQt5 import QtWidgets, QtCore
 
 class MicrophoneRecorder(object):
     def __init__(self, rate=4000, chunksize=1024):
         self.rate = rate
         self.chunksize = chunksize
-        self.p = pyaudio.PyAudio()
-        self.stream = self.p.open(format=pyaudio.paInt16,
-                                  channels=1,
-                                  rate=self.rate,
-                                  input=True,
-                                  frames_per_buffer=self.chunksize,
-                                  stream_callback=self.new_frame)
         self.lock = threading.Lock()
         self.stop = False
         self.frames = []
+        self.stream = sd.InputStream(samplerate=self.rate,
+                                     blocksize=self.chunksize,
+                                     channels=1,
+                                     dtype='int16',
+                                     callback=self.new_frame)
         atexit.register(self.close)
 
     def new_frame(self, data, frame_count, time_info, status):
-        data = np.fromstring(data, 'int16')
         with self.lock:
-            self.frames.append(data)
-            if self.stop:
-                return None, pyaudio.paComplete
-        return None, pyaudio.paContinue
+            if not self.stop:
+                self.frames.append(data[:, 0].copy())
     
     def get_frames(self):
         with self.lock:
@@ -40,13 +36,14 @@ class MicrophoneRecorder(object):
             return frames
     
     def start(self):
-        self.stream.start_stream()
+        self.stream.start()
 
     def close(self):
         with self.lock:
+            if self.stop:
+                return
             self.stop = True
         self.stream.close()
-        self.p.terminate()
 
 class MplFigure(object):
     def __init__(self, parent):
@@ -54,9 +51,9 @@ class MplFigure(object):
         self.canvas = FigureCanvas(self.figure)
         self.toolbar = NavigationToolbar(self.canvas, parent)
 
-class LiveFFTWidget(QtGui.QWidget):
+class LiveFFTWidget(QtWidgets.QWidget):
     def __init__(self):
-        QtGui.QWidget.__init__(self)
+        QtWidgets.QWidget.__init__(self)
         
         # customize the UI
         self.initUI()
@@ -72,24 +69,25 @@ class LiveFFTWidget(QtGui.QWidget):
         
     def initUI(self):
 
-        hbox_gain = QtGui.QHBoxLayout()
-        autoGain = QtGui.QLabel('Auto gain for frequency spectrum')
-        autoGainCheckBox = QtGui.QCheckBox(checked=True)
+        hbox_gain = QtWidgets.QHBoxLayout()
+        autoGain = QtWidgets.QLabel('Auto gain for frequency spectrum')
+        autoGainCheckBox = QtWidgets.QCheckBox()
+        autoGainCheckBox.setChecked(True)
         hbox_gain.addWidget(autoGain)
         hbox_gain.addWidget(autoGainCheckBox)
         
         # reference to checkbox
         self.autoGainCheckBox = autoGainCheckBox
         
-        hbox_fixedGain = QtGui.QHBoxLayout()
-        fixedGain = QtGui.QLabel('Manual gain level for frequency spectrum')
-        fixedGainSlider = QtGui.QSlider(QtCore.Qt.Horizontal)
+        hbox_fixedGain = QtWidgets.QHBoxLayout()
+        fixedGain = QtWidgets.QLabel('Manual gain level for frequency spectrum')
+        fixedGainSlider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         hbox_fixedGain.addWidget(fixedGain)
         hbox_fixedGain.addWidget(fixedGainSlider)
 
         self.fixedGainSlider = fixedGainSlider
 
-        vbox = QtGui.QVBoxLayout()
+        vbox = QtWidgets.QVBoxLayout()
 
         vbox.addLayout(hbox_gain)
         vbox.addLayout(hbox_fixedGain)
@@ -169,7 +167,14 @@ class LiveFFTWidget(QtGui.QWidget):
                 fft_frame *= (1 + self.fixedGainSlider.value()) / 5000000.
                 #print(np.abs(fft_frame).max())
             self.line_bottom.set_data(self.freq_vect, np.abs(fft_frame))            
-            
+             
             # refreshes the plots
             self.main_figure.canvas.draw()
+
+
+if __name__ == '__main__':
+    app = QtWidgets.QApplication(sys.argv)
+    widget = LiveFFTWidget()
+    widget.show()
+    sys.exit(app.exec_())
 
